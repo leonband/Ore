@@ -60,6 +60,14 @@ try:
     # Convert DataFrame to a list of dictionaries
     data = df.to_dict(orient="records")
 
+    df.to_csv("output.csv", index=False) 
+
+    df[["TimeIn_Timb"]] = (
+        df[["TimeIn_Timb"]].astype(object).where(df[["TimeIn_Timb"]].notnull(), None)
+    )
+    df[["TimeOut_Timb"]] = (
+        df[["TimeOut_Timb"]].astype(object).where(df[["TimeOut_Timb"]].notnull(), None)
+    )
     # Insert only new data into MongoDB
     for record in data:
         # Check if the record already exists in MongoDB
