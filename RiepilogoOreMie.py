@@ -1,25 +1,15 @@
 from sqlalchemy import create_engine, text
 import pandas as pd
 import urllib.parse
-from pymongo import MongoClient
-import json
+import sqlite3 as sl
+from datetime import datetime
 
-
+# Connection details
 collection_name = "Orari"
+db_path = "./DataBase.db"
 
-try:
-    # MongoDB Connection
-    mongo_uri = r"mongodb+srv://leonbanddb:P1rl3tt4@oredilavoro.o3feq5c.mongodb.net/?retryWrites=true&w=majority&appName=OreDiLavoro"
-    client = MongoClient(mongo_uri)
-    db = client["OreDiLavoro"]
-    collection = db[collection_name]
-
-    # Insert a sample document into the collection (optional)
-    collection.insert_one({"ciao": "ciao"})
-    print("Document inserted into MongoDB successfully!")
-
-except Exception as e:
-    print(f"MongoDB Error: {e}")
+con = sl.connect(db_path)
+cursor = con.cursor()
 
 try:
     # Define the path to your Access database
@@ -39,11 +29,11 @@ try:
     codDip_value = 1008
 
     # Write your SQL query to fetch data with a parameter placeholder
-    query = "SELECT TimeIn_Timb, TimeOut_Timb, OreLav_Timb FROM Timbrature_T WHERE CodDip_Timb = 1008"
+    query = "SELECT CodDip_Timb, TimeIn_Timb, TimeOut_Timb, OreLav_Timb FROM Timbrature_T WHERE CodDip_Timb = :codDip_value"
 
     # Execute the query with the parameter using SQLAlchemy's text() function
     with engine.connect() as connection:
-        result = connection.execute(text(query))
+        result = connection.execute(text(query), {"codDip_value": codDip_value})
 
         # Fetch all rows from the executed query
         rows = result.fetchall()
@@ -54,29 +44,41 @@ try:
     # Convert the result set to a pandas DataFrame
     df = pd.DataFrame(rows, columns=columns)
 
+    # Convert TimeIn_Timb and TimeOut_Timb to datetime
+    df["TimeIn_Timb"] = pd.to_datetime(df["TimeIn_Timb"])
+    df["TimeOut_Timb"] = pd.to_datetime(df["TimeOut_Timb"])
+
     # Sort DataFrame by index (optional)
     df = df.sort_index(ascending=False)
 
     # Convert DataFrame to a list of dictionaries
     data = df.to_dict(orient="records")
 
-    df.to_csv("output.csv", index=False) 
+    df.to_csv("output.csv", index=False)
 
-    df[["TimeIn_Timb"]] = (
-        df[["TimeIn_Timb"]].astype(object).where(df[["TimeIn_Timb"]].notnull(), None)
-    )
-    df[["TimeOut_Timb"]] = (
-        df[["TimeOut_Timb"]].astype(object).where(df[["TimeOut_Timb"]].notnull(), None)
-    )
-    # Insert only new data into MongoDB
-    for record in data:
-        # Check if the record already exists in MongoDB
-        if not collection.find_one(record):
-            collection.insert_one(record)
-            print(f"Inserted record: {record}")
-        else:
-            print(f"Record already exists: {record}")
+    con.execute("DROP TABLE IF EXISTS Orari;")
 
-    print("Data upload completed successfully!")
+    df.to_sql(collection_name, con, if_exists="replace", index=False)
+
+    df["month_year"] = df["TimeIn_Timb"].dt.to_period("M").astype(str)
+    print("df[month_year]", df["month_year"])
+    unique_months = df["month_year"].unique()
+    print("unique_month", unique_months)
+
+    def create_monthly_table(month, df):
+        Orari = f"data_{month.replace('-', '_')}"
+        print("Orari ", Orari)
+        df.to_sql(Orari, con, if_exists="replace", index=False)
+
+    for month in unique_months:
+        if month != "NaT":
+            month_data = df[df["month_year"] == month]
+            create_monthly_table(month, month_data)
+
+    # Remove the erroneous query since we already created the Orari table and populated it
+    # cursor.execute(f"SELECT OreLav_Timb from {collection_name} where CodDip_Timb = ?", (codDip_value,))
+
 except Exception as e:
     print(f"Error: {e}")
+finally:
+    con.close()
