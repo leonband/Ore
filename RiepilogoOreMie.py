@@ -61,13 +61,13 @@ try:
     df.to_sql(collection_name, con, if_exists="replace", index=False)
 
     df["month_year"] = df["TimeIn_Timb"].dt.to_period("M").astype(str)
-    print("df[month_year]", df["month_year"])
+    #print("df[month_year]", df["month_year"])
     unique_months = df["month_year"].unique()
-    print("unique_month", unique_months)
+    #print("unique_month", unique_months)
 
     def create_monthly_table(month, df):
         Orari = f"data_{month.replace('-', '_')}"
-        print("Orari ", Orari)
+        #print("Orari ", Orari)
         df.to_sql(Orari, con, if_exists="replace", index=False)
 
     for month in unique_months:
