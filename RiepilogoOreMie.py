@@ -30,6 +30,7 @@ try:
 
     # Write your SQL query to fetch data with a parameter placeholder
     query = "SELECT CodDip_Timb, TimeIn_Timb, TimeOut_Timb, OreLav_Timb FROM Timbrature_T WHERE CodDip_Timb = :codDip_value"
+    query2 = "SELECT * FROM "
 
     # Execute the query with the parameter using SQLAlchemy's text() function
     with engine.connect() as connection:
@@ -44,6 +45,19 @@ try:
     # Convert the result set to a pandas DataFrame
     df = pd.DataFrame(rows, columns=columns)
 
+    # Execute the query with the parameter using SQLAlchemy's text() function
+    with engine.connect() as connection:
+        result = connection.execute(text(query2), {"codDip_value": codDip_value})
+
+        # Fetch all rows from the executed query
+        rows2 = result.fetchall()
+
+        # Get column names from the result set
+        columns2 = result.keys()
+
+    # Convert the result set to a pandas DataFrame
+    dp = pd.DataFrame(rows2, columns=columns2)
+
     # Convert TimeIn_Timb and TimeOut_Timb to datetime
     df["TimeIn_Timb"] = pd.to_datetime(df["TimeIn_Timb"])
     df["TimeOut_Timb"] = pd.to_datetime(df["TimeOut_Timb"])
@@ -55,19 +69,20 @@ try:
     data = df.to_dict(orient="records")
 
     df.to_csv("output.csv", index=False)
+    dp.to_csv("output2.csv", index=False)
 
     con.execute("DROP TABLE IF EXISTS Orari;")
 
     df.to_sql(collection_name, con, if_exists="replace", index=False)
 
     df["month_year"] = df["TimeIn_Timb"].dt.to_period("M").astype(str)
-    #print("df[month_year]", df["month_year"])
+    # print("df[month_year]", df["month_year"])
     unique_months = df["month_year"].unique()
-    #print("unique_month", unique_months)
+    # print("unique_month", unique_months)
 
     def create_monthly_table(month, df):
         Orari = f"data_{month.replace('-', '_')}"
-        #print("Orari ", Orari)
+        # print("Orari ", Orari)
         df.to_sql(Orari, con, if_exists="replace", index=False)
 
     for month in unique_months:
