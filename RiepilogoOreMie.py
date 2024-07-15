@@ -29,8 +29,8 @@ try:
     codDip_value = 1008
 
     # Write your SQL query to fetch data with a parameter placeholder
-    query = "SELECT CodDip_Timb, TimeIn_Timb, TimeOut_Timb, OreLav_Timb FROM Timbrature_T WHERE CodDip_Timb = :codDip_value"
-    query2 = "SELECT * FROM "
+    query = "SELECT * FROM Timbrature_T WHERE CodDip_Timb = :codDip_value"
+    #query2 = "SELECT * FROM "
 
     # Execute the query with the parameter using SQLAlchemy's text() function
     with engine.connect() as connection:
@@ -45,18 +45,6 @@ try:
     # Convert the result set to a pandas DataFrame
     df = pd.DataFrame(rows, columns=columns)
 
-    # Execute the query with the parameter using SQLAlchemy's text() function
-    with engine.connect() as connection:
-        result = connection.execute(text(query2), {"codDip_value": codDip_value})
-
-        # Fetch all rows from the executed query
-        rows2 = result.fetchall()
-
-        # Get column names from the result set
-        columns2 = result.keys()
-
-    # Convert the result set to a pandas DataFrame
-    dp = pd.DataFrame(rows2, columns=columns2)
 
     # Convert TimeIn_Timb and TimeOut_Timb to datetime
     df["TimeIn_Timb"] = pd.to_datetime(df["TimeIn_Timb"])
@@ -69,7 +57,7 @@ try:
     data = df.to_dict(orient="records")
 
     df.to_csv("output.csv", index=False)
-    dp.to_csv("output2.csv", index=False)
+    #dp.to_csv("output2.csv", index=False)
 
     con.execute("DROP TABLE IF EXISTS Orari;")
 
